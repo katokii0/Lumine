@@ -1,0 +1,50 @@
+name: iOS Unsigned Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: 'latest-stable'
+
+      - name: Build App (Unsigned)
+        run: |
+          xcodebuild build \
+            -project LuminaPlayer.xcodeproj \
+            -scheme LuminaPlayer \
+            -configuration Release \
+            -sdk iphoneos \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_ENTITLEMENTS="" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            -derivedDataPath build
+
+      - name: Create IPA (Unsigned)
+        run: |
+          mkdir -p Payload
+          # Szukamy skompilowanej aplikacji w derived data
+          APP_PATH=$(find build/Build/Products/Release-iphoneos -name "*.app" | head -n 1)
+          cp -r "$APP_PATH" Payload/
+          zip -r LuminaPlayer_Unsigned.ipa Payload
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LuminaPlayer-Unsigned-IPA
+          path: LuminaPlayer_Unsigned.ipa
+
